@@ -1,152 +1,189 @@
 import streamlit as st
 import pandas as pd
-import seaborn as sns
+import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.ensemble import RandomForestClassifier
+import seaborn as sns
+from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score
 
-# إعداد الصفحة
-st.set_page_config(page_title="Blood Donation Analysis", layout="wide")
+# Page Config
+st.set_page_config(
+    page_title="Blood Donation Eligibility Predictor",
+    page_icon="🩸",
+    layout="wide"
+)
 
-st.title("Blood Donation Analysis & Prediction")
+# --- 1. Load Data ---
+@st.cache_data
+def load_data():
+    try:
+        # Ensure the csv file is in the same directory
+        df = pd.read_csv('blood_donation.csv')
+        return df
+    except FileNotFoundError:
+        return None
 
-# قراءة البيانات
-df = pd.read_csv("data.csv")
+# --- 2. Data Preprocessing ---
+def preprocess_data(df):
+    data = df.copy()
+    
+    # Date Conversion (as done in your notebook)
+    if 'Last_Donation_Date' in data.columns:
+        data['Last_Donation_Date'] = pd.to_datetime(data['Last_Donation_Date'], format='%d-%m-%Y', errors='coerce')
+        data['Donation_Year'] = data['Last_Donation_Date'].dt.year
 
-# --------------------------
-# واجهة التحليل والرسومات
-# --------------------------
-st.header("Data Analysis & Visualization")
+    # Select Features for Training
+    features = ['Age', 'Gender', 'Weight_kg', 'Hemoglobin_g_dL', 'Total_Donations', 'Blood_Group']
+    target = 'Eligible_for_Donation'
+    
+    # Keep a copy for visualization before encoding
+    df_vis = data.copy()
+    
+    # Handling missing values
+    data = data.dropna(subset=features)
 
-st.subheader("Number of Donors by Blood Group")
-fig1 = plt.figure(figsize=(8,5))
-sns.countplot(data=df, x='Blood_Group', palette=['#440154', '#31688E', '#35B779', '#FDE725', '#F46D43', '#5C4D7D', '#C51B7D', '#FDE0A4'])
-plt.title('Number of Donors by Blood Group')
-plt.xlabel('Blood Group')
-plt.ylabel('Number of Donors')
-plt.grid(axis='y', linestyle='--', alpha=0.5)
-st.pyplot(fig1)
+    # Label Encoding
+    encoders = {}
+    label_cols = ['Gender', 'Blood_Group', 'Eligible_for_Donation']
+    
+    for col in label_cols:
+        le = LabelEncoder()
+        data[col] = le.fit_transform(data[col].astype(str))
+        encoders[col] = le
+        
+    return data, df_vis, encoders
 
-st.subheader("Donor Distribution by Gender")
-donor_counts = df.groupby('Gender')['Blood_Group'].count()
-fig2 = plt.figure(figsize=(6,6))
-plt.pie(donor_counts, labels=donor_counts.index, autopct='%1.1f%%', colors=['skyblue','lightcoral'])
-plt.title('Donor Distribution by Gender')
-st.pyplot(fig2)
+# --- 3. Main App Interface ---
 
-st.subheader("Number of Donations per Year")
-donation_per_year = df.groupby('Donation_Year')['Blood_Group'].count()
-fig3 = plt.figure(figsize=(8,5))
-donation_per_year.plot(kind='line', marker='o', color='skyblue')
-plt.title('Number of Donations per Year')
-plt.xlabel('Year')
-plt.ylabel('Number of Donations')
-plt.xticks(donation_per_year.index)  
-plt.grid(True)
-st.pyplot(fig3)
+# Sidebar
+st.sidebar.image("https://cdn-icons-png.flaticon.com/512/2060/2060267.png", width=100)
+st.sidebar.title("Navigation")
+app_mode = st.sidebar.selectbox("Choose Page", ["Dashboard (Analysis)", "Prediction (AI Model)"])
 
-st.subheader("Donations per Year by Gender (Stacked)")
-gender_year = df.groupby("Donation_Year")['Gender'].value_counts().unstack(fill_value=0)
-fig4 = plt.figure(figsize=(8,5))
-gender_year.plot(kind='bar', figsize=(8,5))
-plt.title("Donations per Year by Gender (Stacked)")
-plt.xlabel("Year")
-plt.ylabel("Total Donations")
-plt.xticks(rotation=0)
-plt.grid(axis='y')
-st.pyplot(fig4)
+# Load and Process
+raw_df = load_data()
 
-st.subheader("Average Hemoglobin by Gender")
-mean_hb = df.groupby('Gender')['Hemoglobin_g_dL'].mean()
-fig5 = plt.figure(figsize=(6,5))
-ax = mean_hb.plot(kind='bar', color=['#2E8B57', '#FFA07A'], edgecolor='black')
-for p in ax.patches:
-    height = p.get_height()
-    ax.text(p.get_x() + p.get_width()/2, height + 0.1, f'{height:.2f}', 
-            ha='center', va='bottom', fontsize=12, color='black')
-plt.title('Average Hemoglobin by Gender')
-plt.ylabel('Hemoglobin (g/dL)')
-plt.xlabel('Gender')
-plt.grid(axis='y', linestyle='--', alpha=0.5)
-st.pyplot(fig5)
+if raw_df is None:
+    st.error("Error: 'blood_donation.csv' not found. Please place the dataset in the same directory as this script.")
+else:
+    df_processed, df_vis, encoders = preprocess_data(raw_df)
 
-st.subheader("Top 5 Cities by Number of Donors")
-top_cities = df.groupby("City")['Blood_Group'].count().sort_values(ascending=False).head()
-fig6 = plt.figure(figsize=(8,5))
-ax = top_cities.plot(kind='bar', color=['#4C72B0', '#55A868', '#C44E52', '#8172B3', '#CCB974'], edgecolor='black')
-plt.title('Top 5 Cities by Number of Donors')
-plt.xlabel('City')
-plt.ylabel('Number of Donors')
-plt.grid(axis='y', linestyle='--', alpha=0.5)
-st.pyplot(fig6)
+    # ================= Page 1: Dashboard =================
+    if app_mode == "Dashboard (Analysis)":
+        st.title("📊 Blood Donor Data Analysis")
+        st.markdown("A comprehensive overview of donor distributions and health metrics.")
 
-st.subheader("Distribution of Donors Age")
-fig7 = plt.figure(figsize=(8,5))
-plt.hist(df['Age'], bins=10, color='skyblue', edgecolor='black')
-plt.title('Distribution of Donors Age')
-plt.xlabel('Age')
-plt.ylabel('Number of Donors')
-st.pyplot(fig7)
+        # Show Data Sample
+        with st.expander("View Raw Data"):
+            st.dataframe(raw_df.head())
+            st.write(f"Dataset Shape: {raw_df.shape}")
 
-st.subheader("Age Distribution by Blood Group")
-fig8 = plt.figure(figsize=(10,6))
-sns.boxplot(data=df, x='Blood_Group', y='Age', palette='Set2')
-plt.title('Age Distribution by Blood Group')
-st.pyplot(fig8)
+        # Charts
+        col1, col2 = st.columns(2)
 
-st.subheader("Weight vs Hemoglobin by Gender")
-fig9 = plt.figure(figsize=(8,6))
-sns.scatterplot(data=df, x='Weight_kg', y='Hemoglobin_g_dL', hue='Gender', palette='Set1')
-st.pyplot(fig9)
+        with col1:
+            st.subheader("Distribution by Blood Group")
+            fig1, ax1 = plt.subplots(figsize=(8, 5))
+            sns.countplot(data=df_vis, x='Blood_Group', palette='viridis', ax=ax1)
+            plt.title('Number of Donors by Blood Group')
+            plt.xlabel('Blood Group')
+            plt.ylabel('Count')
+            st.pyplot(fig1)
 
-st.subheader("Correlation Heatmap")
-fig10 = plt.figure(figsize=(8,6))
-sns.heatmap(df.corr(numeric_only=True),annot=True)
-st.pyplot(fig10)
+        with col2:
+            st.subheader("Average Hemoglobin by Gender")
+            fig2, ax2 = plt.subplots(figsize=(8, 5))
+            mean_hb = df_vis.groupby('Gender')['Hemoglobin_g_dL'].mean()
+            mean_hb.plot(kind='bar', color=['#2E8B57', '#FFA07A'], edgecolor='black', ax=ax2)
+            plt.title('Average Hemoglobin by Gender')
+            plt.ylabel('Hemoglobin (g/dL)')
+            st.pyplot(fig2)
 
-# --------------------------
-# Prediction Interface
-# --------------------------
-st.header("Predict Blood Donation Eligibility")
+        col3, col4 = st.columns(2)
 
-# ترميز الأعمدة
-label_cols = ['Gender', 'Blood_Group', 'Eligible_for_Donation']
-le_dict = {}
-for col in label_cols:
-    le = LabelEncoder()
-    df[col] = le.fit_transform(df[col].astype(str))
-    le_dict[col] = le
+        with col3:
+            st.subheader("Donations Over Years")
+            if 'Donation_Year' in df_vis.columns:
+                fig3, ax3 = plt.subplots(figsize=(8, 5))
+                donation_per_year = df_vis.groupby('Donation_Year')['Blood_Group'].count()
+                donation_per_year.plot(kind='line', marker='o', color='skyblue', ax=ax3)
+                plt.grid(True)
+                st.pyplot(fig3)
+            else:
+                st.warning("Donation Year data not available.")
 
-# النموذج
-X = df[['Age', 'Gender', 'Weight_kg', 'Hemoglobin_g_dL', 'Total_Donations', 'Blood_Group']]
-y = df['Eligible_for_Donation']
-model = RandomForestClassifier()
-model.fit(X, y)
+        with col4:
+            st.subheader("Age Distribution")
+            fig4, ax4 = plt.subplots(figsize=(8, 5))
+            ax4.hist(df_vis['Age'], bins=15, color='skyblue', edgecolor='black')
+            plt.title('Age Distribution')
+            st.pyplot(fig4)
 
-# مدخلات المستخدم
-age = st.number_input("Age", 18, 65, 30)
-gender = st.selectbox("Gender", df['Gender'].unique())
-blood_group = st.selectbox("Blood Group", df['Blood_Group'].unique())
-weight = st.number_input("Weight (kg)", 40, 120, 70)
-hb = st.number_input("Hemoglobin (g/dL)", 8.0, 20.0, 14.0)
-donations = st.number_input("Total Donations", 0, 20, 2)
+        st.subheader("Weight vs. Hemoglobin Relationship")
+        fig5, ax5 = plt.subplots(figsize=(10, 5))
+        sns.scatterplot(data=df_vis, x='Weight_kg', y='Hemoglobin_g_dL', hue='Gender', palette='Set1', ax=ax5)
+        st.pyplot(fig5)
 
-# تجهيز بيانات المستخدم
-input_df = pd.DataFrame({
-    'Age':[age],
-    'Gender':[gender],
-    'Weight_kg':[weight],
-    'Hemoglobin_g_dL':[hb],
-    'Total_Donations':[donations],
-    'Blood_Group':[blood_group]
-})
+    # ================= Page 2: Prediction =================
+    elif app_mode == "Prediction (AI Model)":
+        st.title("🤖 AI Eligibility Predictor")
+        st.markdown("Enter donor details to predict if they are eligible to donate blood using **Random Forest**.")
 
-# الترميز
-for col in ['Gender', 'Blood_Group']:
-    input_df[col] = le_dict[col].transform(input_df[col].astype(str))
+        # Train Model on the fly
+        X = df_processed[['Age', 'Gender', 'Weight_kg', 'Hemoglobin_g_dL', 'Total_Donations', 'Blood_Group']]
+        y = df_processed['Eligible_for_Donation']
+        
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+        
+        # Initialize and Train Random Forest (Best model from notebook)
+        model = RandomForestClassifier()
+        model.fit(X_train, y_train)
+        
+        # Show Accuracy
+        acc = accuracy_score(y_test, model.predict(X_test))
+        st.success(f"Model Trained Successfully! Accuracy: **{acc*100:.2f}%**")
 
-# التنبؤ
-prediction = model.predict(input_df)[0]
-result = "Eligible" if prediction == 1 else "Not Eligible"
-st.subheader("Prediction Result")
-st.write(result)
+        st.markdown("---")
+        
+        # Input Form
+        col_input1, col_input2, col_input3 = st.columns(3)
+
+        with col_input1:
+            input_gender = st.selectbox("Gender", encoders['Gender'].classes_)
+            input_blood = st.selectbox("Blood Group", encoders['Blood_Group'].classes_)
+
+        with col_input2:
+            input_age = st.number_input("Age", min_value=18, max_value=65, value=30)
+            input_weight = st.number_input("Weight (kg)", min_value=45.0, max_value=150.0, value=70.0)
+
+        with col_input3:
+            input_hb = st.number_input("Hemoglobin (g/dL)", min_value=5.0, max_value=20.0, value=13.5)
+            input_donations = st.number_input("Previous Donations", min_value=0, max_value=50, value=0)
+
+        # Predict Button
+        if st.button("Check Eligibility", type="primary"):
+            # Encode categorical inputs
+            gender_encoded = encoders['Gender'].transform([input_gender])[0]
+            blood_encoded = encoders['Blood_Group'].transform([input_blood])[0]
+            
+            # Prepare input array
+            input_data = np.array([[input_age, gender_encoded, input_weight, input_hb, input_donations, blood_encoded]])
+            
+            # Make Prediction
+            prediction_idx = model.predict(input_data)[0]
+            prediction_text = encoders['Eligible_for_Donation'].inverse_transform([prediction_idx])[0]
+            
+            st.markdown("---")
+            if prediction_text == 'Yes':
+                st.balloons()
+                st.success("✅ **Eligible for Donation**")
+                st.info("The donor meets the medical criteria based on the AI model.")
+            else:
+                st.error("❌ **Not Eligible**")
+                st.warning("The donor may have low hemoglobin or other contraindications based on historical patterns.")
+
+# Footer
+st.markdown("---")
+st.markdown("Developed using Python & Streamlit based on provided Data Analysis Notebook.")
