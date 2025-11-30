@@ -8,50 +8,54 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
 
-# Page Configuration
+# إعداد الصفحة
 st.set_page_config(
-    page_title="Blood Donation Analysis & AI Prediction",
+    page_title="Blood Donation Analysis & Prediction",
     page_icon="🩸",
     layout="wide"
 )
 
-# --- 1. Load Data ---
+# --- 1. تحميل البيانات ---
 @st.cache_data
 def load_data():
     try:
+        # تأكد أن ملف البيانات موجود في نفس المجلد
         df = pd.read_csv('blood_donation.csv')
         return df
     except FileNotFoundError:
         return None
 
-# --- 2. Preprocessing & Model Training ---
+# --- 2. معالجة البيانات وتدريب النموذج ---
 def process_and_train(df):
     data = df.copy()
     
-    # Date Processing
+    # معالجة التواريخ
     if 'Last_Donation_Date' in data.columns:
         data['Last_Donation_Date'] = pd.to_datetime(data['Last_Donation_Date'], format='%d-%m-%Y', errors='coerce')
         data['Donation_Year'] = data['Last_Donation_Date'].dt.year
 
-    # Encoding for ML
+    # التشفير (Encoding) للموديل
     encoders = {}
     label_cols = ['Gender', 'Blood_Group', 'Eligible_for_Donation']
     
-    # Fit encoders on the whole dataset to ensure consistency
     for col in label_cols:
         le = LabelEncoder()
         data[f'{col}_Encoded'] = le.fit_transform(data[col].astype(str))
         encoders[col] = le
 
-    # Features & Target
+    # تحديد الخصائص والهدف
     feature_cols = ['Age', 'Gender_Encoded', 'Weight_kg', 'Hemoglobin_g_dL', 'Total_Donations', 'Blood_Group_Encoded']
+    
+    # حذف القيم المفقودة لضمان دقة التدريب
+    data = data.dropna(subset=feature_cols)
+    
     X = data[feature_cols]
     y = data['Eligible_for_Donation_Encoded']
 
-    # Train/Test Split
+    # تقسيم البيانات
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-    # Random Forest Model (Best performing in notebook)
+    # تدريب النموذج (Random Forest)
     model = RandomForestClassifier(random_state=42)
     model.fit(X_train, y_train)
     
@@ -59,44 +63,65 @@ def process_and_train(df):
     
     return data, model, encoders, acc
 
-# --- Main Application ---
-st.title("🩸 Blood Donation Analysis & Prediction")
+# --- واجهة التطبيق الرئيسية ---
+st.title("🩸 Blood Donation Analysis & AI Prediction")
 
 raw_df = load_data()
 
 if raw_df is None:
-    st.error("Error: 'blood_donation.csv' file not found. Please make sure it is in the same directory.")
+    st.error("Error: 'blood_donation.csv' file not found. Please ensure it is in the same directory.")
 else:
-    # Process data and Train Model
+    # تجهيز البيانات والنموذج
     df_clean, model, encoders, accuracy = process_and_train(raw_df)
 
-    # Tabs for better organization
+    # إنشاء التبويبات
     tab1, tab2 = st.tabs(["📊 Dashboard", "🤖 AI Prediction"])
 
-    # ================= TAB 1: DASHBOARD =================
+    # ================= التبويب الأول: لوحة التحكم =================
     with tab1:
-        st.header("Data Visualization")
+        st.header("Data Visualization Dashboard")
         
-        # Row 1
+        # الصف الأول
         col1, col2 = st.columns(2)
         
         with col1:
-            st.subheader("1. Donors by Blood Group")
+            st.subheader("1. Number of Donors by Blood Group")
             fig1 = plt.figure(figsize=(8, 5))
             sns.countplot(data=raw_df, x='Blood_Group', palette='viridis')
             plt.title('Number of Donors by Blood Group')
             plt.grid(axis='y', linestyle='--', alpha=0.5)
             st.pyplot(fig1)
+            
+            # --- إضافة الوصف والجدول الذي طلبته هنا ---
+            with st.expander("ℹ️ View Blood Type Compatibility & Reasons"):
+                st.markdown("""
+                ### Blood Type Compatibility
+                | Blood Type | Can Donate To | Can Receive From |
+                |:---:|:---|:---|
+                | **O-** | All types | O- |
+                | **O+** | O+, A+, B+, AB+ | O-, O+ |
+                | **A-** | A-, A+, AB-, AB+ | A-, O- |
+                | **A+** | A+, AB+ | A+, A-, O+, O- |
+                | **B-** | B-, B+, AB-, AB+ | B-, O- |
+                | **B+** | B+, AB+ | B+, B-, O+, O- |
+                | **AB-** | AB-, AB+ | AB-, A-, B-, O- |
+                | **AB+** | AB+ | All types |
+
+                ---
+                ### Reasons for Blood Type Distribution in India
+                * **Genetic reason:** O+ and B+ are more common among the population, A+ is less common, and AB+ is rare.
+                * **Compatibility reason:** O+ can donate to most positive blood types → appears more in donations. AB+ can donate only to AB → appears less in donations.
+                """)
 
         with col2:
-            st.subheader("2. Distribution by Gender")
+            st.subheader("2. Donor Distribution by Gender")
             donor_counts = raw_df.groupby('Gender')['Blood_Group'].count()
             fig2 = plt.figure(figsize=(6, 6))
             plt.pie(donor_counts, labels=donor_counts.index, autopct='%1.1f%%', colors=['skyblue','lightcoral'])
             plt.title('Donor Distribution by Gender')
             st.pyplot(fig2)
 
-        # Row 2
+        # الصف الثاني
         col3, col4 = st.columns(2)
 
         with col3:
@@ -121,7 +146,7 @@ else:
                 plt.grid(axis='y')
                 st.pyplot(fig4)
 
-        # Row 3
+        # الصف الثالث
         col5, col6 = st.columns(2)
 
         with col5:
@@ -142,7 +167,7 @@ else:
             plt.grid(axis='y', linestyle='--', alpha=0.5)
             st.pyplot(fig6)
 
-        # Row 4
+        # الصف الرابع
         col7, col8 = st.columns(2)
 
         with col7:
@@ -153,13 +178,13 @@ else:
             st.pyplot(fig7)
 
         with col8:
-            st.subheader("8. Age by Blood Group")
+            st.subheader("8. Age Distribution by Blood Group")
             fig8 = plt.figure(figsize=(8, 5))
             sns.boxplot(data=raw_df, x='Blood_Group', y='Age', palette='Set2')
             plt.title('Age Distribution by Blood Group')
             st.pyplot(fig8)
 
-        # Row 5
+        # الصف الخامس
         col9, col10 = st.columns(2)
 
         with col9:
@@ -170,22 +195,21 @@ else:
             st.pyplot(fig9)
 
         with col10:
-            st.subheader("10. Correlation Heatmap")
+            st.subheader("10. Feature Correlation")
             fig10 = plt.figure(figsize=(10, 8))
-            # Calculate correlation only on numeric encoded columns
             numeric_df = df_clean.select_dtypes(include=[np.number])
             sns.heatmap(numeric_df.corr(), annot=True, fmt=".2f", cmap='coolwarm')
-            plt.title('Feature Correlation')
+            plt.title('Correlation Heatmap')
             st.pyplot(fig10)
 
-    # ================= TAB 2: ML PREDICTION =================
+    # ================= التبويب الثاني: الذكاء الاصطناعي =================
     with tab2:
-        st.header("🤖 Check Donation Eligibility")
-        st.markdown(f"**Model Used:** Random Forest Classifier | **Accuracy:** {accuracy*100:.2f}%")
+        st.header("🤖 Check Donation Eligibility (AI Model)")
+        st.markdown(f"**Model Accuracy:** {accuracy*100:.2f}% using Random Forest")
         
         st.write("### Enter Donor Details:")
         
-        # Input Form in Columns
+        # فورم الإدخال
         c1, c2, c3 = st.columns(3)
         
         with c1:
@@ -200,16 +224,16 @@ else:
             in_hb = st.number_input("Hemoglobin (g/dL)", min_value=5.0, max_value=20.0, value=14.0)
             in_donations = st.number_input("Total Previous Donations", min_value=0, max_value=50, value=0)
 
-        # Prediction Logic
+        # زر التوقع
         if st.button("Predict Eligibility", type="primary"):
-            # Encode inputs
+            # تحويل المدخلات
             gen_code = encoders['Gender'].transform([in_gender])[0]
             blood_code = encoders['Blood_Group'].transform([in_blood])[0]
             
-            # Create feature array [Age, Gender, Weight, Hemoglobin, Total_Donations, Blood_Group]
+            # تجهيز البيانات
             input_vector = np.array([[in_age, gen_code, in_weight, in_hb, in_donations, blood_code]])
             
-            # Predict
+            # التنبؤ
             pred = model.predict(input_vector)[0]
             result = encoders['Eligible_for_Donation'].inverse_transform([pred])[0]
             
@@ -219,8 +243,8 @@ else:
                 st.balloons()
             else:
                 st.error(f"❌ **Not Eligible**: This donor is mostly NOT eligible to donate based on the model.")
-                st.info("Note: This could be due to low hemoglobin, weight, or donation history.")
+                st.info("Note: Ensure hemoglobin levels and weight meet the standard requirements.")
 
-# Footer
+# تذييل الصفحة
 st.markdown("---")
-st.markdown("Created with Streamlit based on Random Forest Analysis")
+st.markdown("Developed with ❤️ using Streamlit & Python")
