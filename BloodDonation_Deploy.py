@@ -100,10 +100,12 @@ if selection == "1. Project Overview & Data":
 # --- Page 2: Blood Groups ---
 elif selection == "2. Blood Group Distribution":
     st.header("🩸 Blood Group Distribution")
-    # Reduced size to (6, 4)
-    fig, ax = plt.subplots(figsize=(6, 4))
+    
+    # Much Smaller size: (5, 3)
+    fig, ax = plt.subplots(figsize=(5, 3))
     sns.countplot(data=df_viz, x='Blood_Group', palette='viridis', ax=ax)
-    ax.set_title("Count of Donors by Blood Group")
+    ax.set_title("Count of Donors by Blood Group", fontsize=10)
+    ax.tick_params(axis='both', which='major', labelsize=8)
     st.pyplot(fig)
 
     # --- Custom Note ---
@@ -121,32 +123,34 @@ elif selection == "2. Blood Group Distribution":
     | **AB+** | AB+ | All types |
 
     **Reasons for Blood Type Distribution in India:**
-    * **Genetic reason:** O+ and B+ are more common among the population, A+ is less common, and AB+ is rare.
-    * **Compatibility reason:** O+ can donate to most positive blood types → appears more in donations. AB+ can donate only to AB → appears less in donations.
+    * **Genetic reason:** O+ and B+ are more common, A+ less common, AB+ rare.
+    * **Compatibility reason:** O+ appears more in donations due to high demand.
     """)
 
 # --- Page 3: Gender ---
 elif selection == "3. Gender Demographics":
     st.header("⚤ Gender Distribution")
     gender_counts = df_viz['Gender'].value_counts()
-    # Reduced size to (4, 4)
-    fig, ax = plt.subplots(figsize=(4, 4))
-    ax.pie(gender_counts, labels=gender_counts.index, autopct='%1.1f%%', colors=['skyblue', 'lightcoral'], startangle=90)
-    ax.set_title("Male vs Female Donors")
+    
+    # Small Pie Chart: (3, 3)
+    fig, ax = plt.subplots(figsize=(3, 3))
+    ax.pie(gender_counts, labels=gender_counts.index, autopct='%1.1f%%', colors=['skyblue', 'lightcoral'], startangle=90, textprops={'fontsize': 8})
+    ax.set_title("Male vs Female Donors", fontsize=10)
     st.pyplot(fig)
 
-    st.info("**Insight:** This chart displays the gender ratio of donors. A balanced ratio indicates good awareness.")
+    st.info("**Insight:** This chart displays the gender ratio of donors.")
 
 # --- Page 4: Years ---
 elif selection == "4. Yearly Donation Trends":
     st.header("📅 Donations Over the Years")
     if 'Donation_Year' in df_viz.columns:
-        # Reduced size to (8, 4)
-        fig, ax = plt.subplots(figsize=(8, 4))
+        # Smaller line chart: (6, 3)
+        fig, ax = plt.subplots(figsize=(6, 3))
         donation_per_year = df_viz.groupby('Donation_Year').size()
         donation_per_year.plot(kind='line', marker='o', color='green', ax=ax)
         plt.grid(True)
-        ax.set_ylabel("Total Donations")
+        ax.set_ylabel("Total Donations", fontsize=8)
+        ax.tick_params(labelsize=8)
         st.pyplot(fig)
 
         st.info("**Insight:** The line graph tracks the growth in donation numbers over the years.")
@@ -160,28 +164,30 @@ elif selection == "5. Donations by Gender (Yearly)":
     if 'Donation_Year' in df_viz.columns and 'Gender' in df_viz.columns:
         gender_year = df_viz.groupby("Donation_Year")['Gender'].value_counts().unstack(fill_value=0)
         
-        # Reduced size to (7, 4)
-        fig, ax = plt.subplots(figsize=(7, 4))
+        # Smaller stacked bar: (6, 3.5)
+        fig, ax = plt.subplots(figsize=(6, 3.5))
         gender_year.plot(kind='bar', ax=ax)
-        ax.set_title("Donations per Year by Gender (Stacked)")
-        ax.set_xlabel("Year")
-        ax.set_ylabel("Total Donations")
-        plt.xticks(rotation=0)
+        ax.set_title("Donations per Year by Gender", fontsize=10)
+        ax.set_xlabel("Year", fontsize=9)
+        ax.set_ylabel("Total Donations", fontsize=9)
+        plt.xticks(rotation=0, fontsize=8)
+        plt.yticks(fontsize=8)
         plt.grid(axis='y')
         st.pyplot(fig)
 
-        st.info("**Insight:** This chart shows the contribution of each gender over time.")
+        st.info("**Insight:** Shows contribution of each gender over time.")
     else:
         st.error("Missing necessary columns.")
 
 # --- Page 6: Hemoglobin ---
 elif selection == "6. Average Hemoglobin Levels":
     st.header("🧪 Average Hemoglobin by Gender")
-    # Reduced size to (6, 4)
-    fig, ax = plt.subplots(figsize=(6, 4))
+    # Smaller Bar Chart: (5, 3)
+    fig, ax = plt.subplots(figsize=(5, 3))
     mean_hb = df_viz.groupby('Gender')['Hemoglobin_g_dL'].mean()
     mean_hb.plot(kind='bar', color=['#2E8B57', '#FFA07A'], edgecolor='black', ax=ax)
-    ax.set_ylabel("Hemoglobin (g/dL)")
+    ax.set_ylabel("Hemoglobin (g/dL)", fontsize=9)
+    plt.xticks(rotation=0, fontsize=9)
     st.pyplot(fig)
 
     st.markdown("### 📋 Normal Hemoglobin Levels")
@@ -195,50 +201,56 @@ elif selection == "6. Average Hemoglobin Levels":
 # --- Page 7: Weight vs Hemoglobin ---
 elif selection == "7. Weight vs. Hemoglobin":
     st.header("⚖️ Weight vs. Hemoglobin")
-    # Reduced size to (8, 5)
-    fig, ax = plt.subplots(figsize=(8, 5))
-    sns.scatterplot(data=df_viz, x='Weight_kg', y='Hemoglobin_g_dL', hue='Gender', palette='Set1', ax=ax)
+    # Smaller Scatter: (6, 4)
+    fig, ax = plt.subplots(figsize=(6, 4))
+    sns.scatterplot(data=df_viz, x='Weight_kg', y='Hemoglobin_g_dL', hue='Gender', palette='Set1', ax=ax, s=15)
+    ax.tick_params(labelsize=8)
+    ax.set_xlabel("Weight", fontsize=9)
+    ax.set_ylabel("Hemoglobin", fontsize=9)
     st.pyplot(fig)
 
-    st.info("**Insight:** This scatter plot shows the correlation between weight and hemoglobin levels.")
+    st.info("**Insight:** Shows correlation between weight and hemoglobin levels.")
 
 # --- Page 8: Cities ---
 elif selection == "8. Geographic Analysis (Cities)":
     st.header("🏙️ Top Cities by Donation Count")
-    # Reduced size to (8, 4)
-    fig, ax = plt.subplots(figsize=(8, 4))
+    # Smaller Bar Chart: (6, 3.5)
+    fig, ax = plt.subplots(figsize=(6, 3.5))
     top_cities = df_viz['City'].value_counts().head(5)
     top_cities.plot(kind='bar', color='#4C72B0', edgecolor='black', ax=ax)
-    plt.xticks(rotation=45)
+    plt.xticks(rotation=15, fontsize=8)
+    plt.yticks(fontsize=8)
     st.pyplot(fig)
 
-    st.info("**Insight:** Identifying top-performing cities helps in logistics planning.")
+    st.info("**Insight:** Identifying top-performing cities.")
 
 # --- Page 9: Age Distribution ---
 elif selection == "9. Age Distribution (Histogram)":
     st.header("🎂 Distribution of Donors Age")
     
-    # Reduced size to (7, 4)
-    fig, ax = plt.subplots(figsize=(7, 4))
+    # Smaller Hist: (6, 4)
+    fig, ax = plt.subplots(figsize=(6, 4))
     ax.hist(df_viz['Age'], bins=10, color='skyblue', edgecolor='black')
-    ax.set_title('Distribution of Donors Age')
-    ax.set_xlabel('Age')
-    ax.set_ylabel('Number of Donors')
+    ax.set_title('Distribution of Donors Age', fontsize=10)
+    ax.set_xlabel('Age', fontsize=9)
+    ax.set_ylabel('Count', fontsize=9)
+    ax.tick_params(labelsize=8)
     st.pyplot(fig)
 
-    st.info("**Insight:** Shows the age demographics of the donors.")
+    st.info("**Insight:** Shows the age demographics of donors.")
 
 # --- Page 10: Age by Blood Group ---
 elif selection == "10. Age by Blood Group (Boxplot)":
     st.header("🩸 Age Distribution by Blood Group")
     
-    # Reduced size to (8, 5)
-    fig, ax = plt.subplots(figsize=(8, 5))
-    sns.boxplot(data=df_viz, x='Blood_Group', y='Age', palette='Set2', ax=ax)
-    ax.set_title('Age Distribution by Blood Group')
+    # Smaller Boxplot: (7, 4)
+    fig, ax = plt.subplots(figsize=(7, 4))
+    sns.boxplot(data=df_viz, x='Blood_Group', y='Age', palette='Set2', ax=ax, linewidth=1)
+    ax.set_title('Age Distribution by Blood Group', fontsize=10)
+    ax.tick_params(labelsize=8)
     st.pyplot(fig)
 
-    st.info("**Insight:** This boxplot analyzes the age spread across different blood groups.")
+    st.info("**Insight:** Analyzes age spread across different blood groups.")
 
 # --- Page 11: Model Training ---
 elif selection == "11. Train Prediction Model":
@@ -277,9 +289,11 @@ elif selection == "11. Train Prediction Model":
         st.success(f"✅ Model **{model_choice}** trained! Accuracy: {acc*100:.2f}%")
 
         st.subheader("Correlation Matrix")
-        # Reduced size to (6, 5)
-        fig, ax = plt.subplots(figsize=(6, 5))
-        sns.heatmap(df_ml.corr(numeric_only=True), annot=True, cmap='coolwarm', fmt=".2f", ax=ax)
+        # Smaller Heatmap: (5, 4)
+        fig, ax = plt.subplots(figsize=(5, 4))
+        sns.heatmap(df_ml.corr(numeric_only=True), annot=True, cmap='coolwarm', fmt=".2f", ax=ax, annot_kws={"size": 7})
+        plt.xticks(fontsize=8)
+        plt.yticks(fontsize=8)
         st.pyplot(fig)
 
 # --- Page 12: Prediction ---
@@ -287,7 +301,7 @@ elif selection == "12. Predict Donor Eligibility":
     st.header("🩺 Predict Eligibility")
 
     if 'model' not in st.session_state:
-        st.warning("⚠️ Please train the model first in the 'Train Prediction Model' page.")
+        st.warning("⚠️ Please train the model first!")
         st.stop()
 
     model = st.session_state['model']
