@@ -133,7 +133,7 @@ elif selection == "3. Gender Demographics":
     gender_counts = df_viz['Gender'].value_counts()
     
     # Small Pie Chart: (3, 3)
-    fig, ax = plt.subplots(figsize=(2, 2))
+    fig, ax = plt.subplots(figsize=(1, 2))
     ax.pie(gender_counts, labels=gender_counts.index, autopct='%1.1f%%', colors=['skyblue', 'lightcoral'], startangle=90, textprops={'fontsize': 8})
     ax.set_title("Male vs Female Donors", fontsize=10)
     st.pyplot(fig)
