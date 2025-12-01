@@ -45,7 +45,6 @@ if df is None:
 # 1. Drop unnecessary columns
 cols_to_drop = ['Full_Name', 'Contact_Number', 'Email', 'Country', 'Donor_ID']
 existing_drop = [c for c in cols_to_drop if c in df.columns]
-st.subheader("Data Shape")
 if existing_drop:
     df_clean = df.drop(columns=existing_drop)
 else:
@@ -71,7 +70,7 @@ st.sidebar.title("Navigation")
 st.sidebar.markdown("---")
 
 pages = [
-    "1. Project Overview & Data",
+    "1. Data Overview, Shape & Info",
     "2. Blood Group Distribution",
     "3. Gender Demographics",
     "4. Yearly Donation Trends",
@@ -91,33 +90,44 @@ selection = st.sidebar.radio("Go to:", pages)
 # === Page Content ===
 # =========================================================
 
-# --- Page 1: Overview ---
-st.subheader("Data Shape")
-col1, col2 = st.columns(2)
-
-with col1:
-    st.metric("Total Rows", df.shape[0])
-
-with col2:
-    st.metric("Total Columns", df.shape[1])
-if selection == "1. Project Overview & Data":
-    st.header("📋 Data Overview & Cleaning")
-    st.subheader("Cleaned Data Preview")
-    st.dataframe(df_clean.head(10))
-    st.write(f"**Total Rows:** {df_clean.shape[0]} | **Total Columns:** {df_clean.shape[1]}")
+# --- Page 1: Overview, Shape & Info ---
+if selection == "1. Data Overview, Shape & Info":
+    st.header("📋 Data Overview")
     
+    # Data Shape (The code you requested)
+    st.subheader("1. Dataset Shape")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.metric("Total Rows", df_clean.shape[0])
+    with col2:
+        st.metric("Total Columns", df_clean.shape[1])
+
+    # Data Info (Types and Nulls)
+    st.subheader("2. Dataset Info (Columns & Types)")
+    buffer = pd.DataFrame({
+        'Column Name': df_clean.columns,
+        'Data Type': df_clean.dtypes.astype(str),
+        'Non-Null Count': df_clean.count()
+    }).reset_index(drop=True)
+    st.dataframe(buffer, use_container_width=True)
+
+    # Preview
+    st.subheader("3. Sample Data")
+    st.dataframe(df_clean.head())
+    st.success("Data cleaning applied: Removed 'Other' gender, dropped ID columns, extracted Year.")
 
 # --- Page 2: Blood Groups ---
 elif selection == "2. Blood Group Distribution":
     st.header("🩸 Blood Group Distribution")
     
+    # Small size
     fig, ax = plt.subplots(figsize=(5, 3))
     sns.countplot(data=df_viz, x='Blood_Group', palette='viridis', ax=ax)
     ax.set_title("Count of Donors by Blood Group", fontsize=10)
-    ax.tick_params(axis='both', which='major', labelsize=8)
+    ax.tick_params(labelsize=8)
     st.pyplot(fig)
 
-    # --- Custom Note ---
+    # Custom Note
     st.markdown("### 🩸 Compatibility & Distribution Notes")
     st.markdown("""
     | Blood Type | Can Donate To | Can Receive From |
@@ -141,34 +151,26 @@ elif selection == "3. Gender Demographics":
     st.header("⚤ Gender Distribution")
     gender_counts = df_viz['Gender'].value_counts()
     
-    # Ultra-Compact Pie Chart: Size Reduced to (2.5, 2.5)
-    fig, ax = plt.subplots(figsize=(2.5, 2.5))
-    ax.pie(
-        gender_counts, 
-        labels=gender_counts.index, 
-        autopct='%1.1f%%', 
-        colors=['skyblue', 'lightcoral'], 
-        startangle=90, 
-        textprops={'fontsize': 6} # Smaller font to fit the smaller chart
-    )
-    ax.set_title("Male vs Female Donors", fontsize=8)
+    # Small Pie Chart
+    fig, ax = plt.subplots(figsize=(3, 3))
+    ax.pie(gender_counts, labels=gender_counts.index, autopct='%1.1f%%', colors=['skyblue', 'lightcoral'], startangle=90, textprops={'fontsize': 8})
+    ax.set_title("Male vs Female", fontsize=10)
     st.pyplot(fig)
 
-    st.info("**Insight:** This chart displays the gender ratio of donors.")
+    st.info("**Insight:** Displays the gender ratio (Male vs Female only).")
 
 # --- Page 4: Years ---
 elif selection == "4. Yearly Donation Trends":
     st.header("📅 Donations Over the Years")
     if 'Donation_Year' in df_viz.columns:
+        # Small Line Chart
         fig, ax = plt.subplots(figsize=(6, 3))
         donation_per_year = df_viz.groupby('Donation_Year').size()
         donation_per_year.plot(kind='line', marker='o', color='green', ax=ax)
         plt.grid(True)
-        ax.set_ylabel("Total Donations", fontsize=8)
+        ax.set_ylabel("Count", fontsize=8)
         ax.tick_params(labelsize=8)
         st.pyplot(fig)
-
-        st.info("**Insight:** The line graph tracks the growth in donation numbers over the years.")
     else:
         st.error("Year column not found.")
 
@@ -179,23 +181,23 @@ elif selection == "5. Donations by Gender (Yearly)":
     if 'Donation_Year' in df_viz.columns and 'Gender' in df_viz.columns:
         gender_year = df_viz.groupby("Donation_Year")['Gender'].value_counts().unstack(fill_value=0)
         
+        # Small Stacked Bar
         fig, ax = plt.subplots(figsize=(6, 3.5))
         gender_year.plot(kind='bar', ax=ax)
         ax.set_title("Donations per Year by Gender", fontsize=10)
         ax.set_xlabel("Year", fontsize=9)
-        ax.set_ylabel("Total Donations", fontsize=9)
+        ax.set_ylabel("Count", fontsize=9)
         plt.xticks(rotation=0, fontsize=8)
         plt.yticks(fontsize=8)
         plt.grid(axis='y')
         st.pyplot(fig)
-
-        st.info("**Insight:** Shows contribution of each gender over time.")
     else:
         st.error("Missing necessary columns.")
 
 # --- Page 6: Hemoglobin ---
 elif selection == "6. Average Hemoglobin Levels":
     st.header("🧪 Average Hemoglobin by Gender")
+    # Small Bar Chart
     fig, ax = plt.subplots(figsize=(5, 3))
     mean_hb = df_viz.groupby('Gender')['Hemoglobin_g_dL'].mean()
     mean_hb.plot(kind='bar', color=['#2E8B57', '#FFA07A'], edgecolor='black', ax=ax)
@@ -203,7 +205,7 @@ elif selection == "6. Average Hemoglobin Levels":
     plt.xticks(rotation=0, fontsize=9)
     st.pyplot(fig)
 
-    st.markdown("### 📋 Normal Hemoglobin Levels")
+    st.markdown("### 📋 Medical Reference")
     st.markdown("""
     | Gender | Normal Hemoglobin (g/dL) |
     | :--- | :--- |
@@ -214,18 +216,17 @@ elif selection == "6. Average Hemoglobin Levels":
 # --- Page 7: Weight vs Hemoglobin ---
 elif selection == "7. Weight vs. Hemoglobin":
     st.header("⚖️ Weight vs. Hemoglobin")
+    # Small Scatter
     fig, ax = plt.subplots(figsize=(6, 4))
     sns.scatterplot(data=df_viz, x='Weight_kg', y='Hemoglobin_g_dL', hue='Gender', palette='Set1', ax=ax, s=15)
     ax.tick_params(labelsize=8)
-    ax.set_xlabel("Weight", fontsize=9)
-    ax.set_ylabel("Hemoglobin", fontsize=9)
     st.pyplot(fig)
-
-    st.info("**Insight:** Shows correlation between weight and hemoglobin levels.")
+    st.info("**Insight:** Correlation between weight and health metrics.")
 
 # --- Page 8: Cities ---
 elif selection == "8. Geographic Analysis (Cities)":
     st.header("🏙️ Top Cities by Donation Count")
+    # Small Bar Chart
     fig, ax = plt.subplots(figsize=(6, 3.5))
     top_cities = df_viz['City'].value_counts().head(5)
     top_cities.plot(kind='bar', color='#4C72B0', edgecolor='black', ax=ax)
@@ -233,12 +234,11 @@ elif selection == "8. Geographic Analysis (Cities)":
     plt.yticks(fontsize=8)
     st.pyplot(fig)
 
-    st.info("**Insight:** Identifying top-performing cities.")
-
 # --- Page 9: Age Distribution ---
 elif selection == "9. Age Distribution (Histogram)":
     st.header("🎂 Distribution of Donors Age")
     
+    # Small Hist
     fig, ax = plt.subplots(figsize=(6, 4))
     ax.hist(df_viz['Age'], bins=10, color='skyblue', edgecolor='black')
     ax.set_title('Distribution of Donors Age', fontsize=10)
@@ -247,19 +247,16 @@ elif selection == "9. Age Distribution (Histogram)":
     ax.tick_params(labelsize=8)
     st.pyplot(fig)
 
-    st.info("**Insight:** Shows the age demographics of donors.")
-
 # --- Page 10: Age by Blood Group ---
 elif selection == "10. Age by Blood Group (Boxplot)":
     st.header("🩸 Age Distribution by Blood Group")
     
+    # Small Boxplot
     fig, ax = plt.subplots(figsize=(7, 4))
     sns.boxplot(data=df_viz, x='Blood_Group', y='Age', palette='Set2', ax=ax, linewidth=1)
     ax.set_title('Age Distribution by Blood Group', fontsize=10)
     ax.tick_params(labelsize=8)
     st.pyplot(fig)
-
-    st.info("**Insight:** Analyzes age spread across different blood groups.")
 
 # --- Page 11: Model Training ---
 elif selection == "11. Train Prediction Model":
@@ -298,6 +295,7 @@ elif selection == "11. Train Prediction Model":
         st.success(f"✅ Model **{model_choice}** trained! Accuracy: {acc*100:.2f}%")
 
         st.subheader("Correlation Matrix")
+        # Small Heatmap
         fig, ax = plt.subplots(figsize=(5, 4))
         sns.heatmap(df_ml.corr(numeric_only=True), annot=True, cmap='coolwarm', fmt=".2f", ax=ax, annot_kws={"size": 7})
         plt.xticks(fontsize=8)
@@ -309,7 +307,7 @@ elif selection == "12. Predict Donor Eligibility":
     st.header("🩺 Predict Eligibility")
 
     if 'model' not in st.session_state:
-        st.warning("⚠️ Please train the model first in the 'Train Prediction Model' page.")
+        st.warning("⚠️ Please train the model first!")
         st.stop()
 
     model = st.session_state['model']
@@ -333,9 +331,10 @@ elif selection == "12. Predict Donor Eligibility":
             pred = model.predict(input_data)
             res = encoders['Eligible_for_Donation'].inverse_transform(pred)[0]
 
+            st.markdown("---")
             if str(res).lower() in ["yes", "1", "eligible", "true"]:
-                st.success("✅ Eligible")
+                st.success("✅ Eligible to Donate")
             else:
                 st.error("❌ Not Eligible")
         except:
-            st.error("Error in prediction.")
+            st.error("Error in prediction input.")
