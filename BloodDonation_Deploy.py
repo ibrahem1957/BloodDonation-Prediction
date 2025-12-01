@@ -12,13 +12,13 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score
 
-# إعدادات الصفحة
+# Page Configuration
 st.set_page_config(page_title="Blood Donation Analysis", layout="wide")
 
-# --- العنوان ---
-st.title("🩸 نظام تحليل وتوقع أهلية التبرع بالدم")
+# --- Title ---
+st.title("🩸 Blood Donation Eligibility Analysis & Prediction System")
 
-# --- دالة تحميل البيانات ---
+# --- Data Loading Function ---
 @st.cache_data
 def load_data():
     try:
@@ -29,36 +29,36 @@ def load_data():
 
 df = load_data()
 
-# التحقق من وجود الملف
+# Check if file exists
 if df is None:
-    st.warning("لم يتم العثور على ملف 'blood_donation.csv'. يرجى رفع الملف.")
-    uploaded_file = st.file_uploader("ارفع ملف CSV", type=["csv"])
+    st.warning("File 'blood_donation.csv' not found. Please upload the file.")
+    uploaded_file = st.file_uploader("Upload CSV File", type=["csv"])
     if uploaded_file is not None:
         df = pd.read_csv(uploaded_file)
     else:
         st.stop()
 
 # ---------------------------------------------------------
-# --- القائمة الجانبية (توزيع الصفحات لكل رسمة) ---
-st.sidebar.title("لوحة التحكم")
+# --- Sidebar Navigation (One page per chart) ---
+st.sidebar.title("Dashboard")
 st.sidebar.markdown("---")
-options = st.sidebar.radio("تصفح الأقسام:", 
+options = st.sidebar.radio("Navigate to:", 
     [
-        "1. عرض البيانات وتنظيفها",
-        "2. رسم: توزيع فصائل الدم",
-        "3. رسم: توزيع الجنس",
-        "4. رسم: التبرعات عبر السنوات",
-        "5. رسم: متوسط الهيموجلوبين",
-        "6. رسم: علاقة الوزن بالهيموجلوبين",
-        "7. رسم: أفضل المدن",
-        "8. رسم: توزيع الأعمار",
-        "9. تدريب النموذج (AI)",
-        "10. فحص متبرع جديد"
+        "1. Data Overview & Cleaning",
+        "2. Plot: Blood Group Distribution",
+        "3. Plot: Gender Distribution",
+        "4. Plot: Donations per Year",
+        "5. Plot: Average Hemoglobin",
+        "6. Plot: Weight vs. Hemoglobin",
+        "7. Plot: Top Cities",
+        "8. Plot: Age Distribution",
+        "9. Model Training (AI)",
+        "10. Check New Donor Eligibility"
     ])
 # ---------------------------------------------------------
 
-# --- معالجة البيانات الأولية (تعمل في الخلفية لكل الصفحات) ---
-# تنظيف الأعمدة
+# --- Data Preprocessing (Runs in background for all pages) ---
+# Drop unnecessary columns
 cols_to_drop = ['Full_Name', 'Contact_Number', 'Email', 'Country', 'Donor_ID']
 existing_drop = [c for c in cols_to_drop if c in df.columns]
 if existing_drop:
@@ -66,101 +66,101 @@ if existing_drop:
 else:
     df_clean = df.copy()
 
-# معالجة التواريخ
+# Date processing
 if 'Last_Donation_Date' in df_clean.columns:
     df_clean['Last_Donation_Date'] = pd.to_datetime(df_clean['Last_Donation_Date'], format='%d-%m-%Y', errors='coerce')
     df_clean['Donation_Year'] = df_clean['Last_Donation_Date'].dt.year
 
-# حفظ البيانات في session
+# Store cleaned data in session state
 st.session_state['df_clean'] = df_clean
-df_viz = df_clean  # متغير للعرض
+df_viz = df_clean  # Variable for visualization
 
 # =========================================================
-# === الصفحات ===
+# === Pages ===
 # =========================================================
 
-# --- 1. عرض البيانات ---
-if options == "1. عرض البيانات وتنظيفها":
-    st.header("تنظيف واستعراض البيانات")
-    st.write("معاينة أول 5 صفوف من البيانات بعد التنظيف:")
+# --- 1. Data Overview ---
+if options == "1. Data Overview & Cleaning":
+    st.header("Data Cleaning & Overview")
+    st.write("Preview of the first 5 rows after cleaning:")
     st.dataframe(df_clean.head())
-    st.write(f"**عدد الصفوف والأعمدة:** {df_clean.shape}")
-    st.success("تم تجهيز البيانات للتحليل.")
+    st.write(f"**Number of Rows & Columns:** {df_clean.shape}")
+    st.success("Data is ready for analysis.")
 
-# --- 2. رسم: فصائل الدم ---
-elif options == "2. رسم: توزيع فصائل الدم":
-    st.header("توزيع فصائل الدم (Blood Groups)")
+# --- 2. Plot: Blood Groups ---
+elif options == "2. Plot: Blood Group Distribution":
+    st.header("Blood Group Distribution")
     fig, ax = plt.subplots(figsize=(8, 6))
     sns.countplot(data=df_viz, x='Blood_Group', palette='viridis', ax=ax)
-    ax.set_title("عدد المتبرعين لكل فصيلة دم")
+    ax.set_title("Number of Donors per Blood Group")
     st.pyplot(fig)
-    st.info("هذا الرسم يوضح أي الفصائل هي الأكثر شيوعاً بين المتبرعين.")
+    st.info("This chart shows which blood groups are the most common among donors.")
 
-# --- 3. رسم: الجنس ---
-elif options == "3. رسم: توزيع الجنس":
-    st.header("توزيع الجنس (Gender Distribution)")
+# --- 3. Plot: Gender ---
+elif options == "3. Plot: Gender Distribution":
+    st.header("Gender Distribution")
     fig, ax = plt.subplots(figsize=(6, 6))
     donor_counts = df_viz.groupby('Gender')['Blood_Group'].count()
     ax.pie(donor_counts, labels=donor_counts.index, autopct='%1.1f%%', colors=['skyblue','lightcoral'])
-    ax.set_title("نسبة الذكور إلى الإناث")
+    ax.set_title("Ratio of Male to Female Donors")
     st.pyplot(fig)
 
-# --- 4. رسم: السنوات ---
-elif options == "4. رسم: التبرعات عبر السنوات":
-    st.header("نشاط التبرع عبر السنوات")
+# --- 4. Plot: Donations per Year ---
+elif options == "4. Plot: Donations per Year":
+    st.header("Donation Activity Over Years")
     if 'Donation_Year' in df_viz.columns:
         fig, ax = plt.subplots(figsize=(10, 5))
         donation_per_year = df_viz.groupby('Donation_Year').size()
         donation_per_year.plot(kind='line', marker='o', color='green', ax=ax)
         plt.grid()
-        ax.set_ylabel("عدد التبرعات")
+        ax.set_ylabel("Number of Donations")
         st.pyplot(fig)
     else:
-        st.error("لا يوجد عمود للتاريخ.")
+        st.error("Date column not found.")
 
-# --- 5. رسم: الهيموجلوبين ---
-elif options == "5. رسم: متوسط الهيموجلوبين":
-    st.header("متوسط الهيموجلوبين حسب الجنس")
+# --- 5. Plot: Hemoglobin ---
+elif options == "5. Plot: Average Hemoglobin":
+    st.header("Average Hemoglobin Levels by Gender")
     fig, ax = plt.subplots(figsize=(8, 6))
     mean_hb = df_viz.groupby('Gender')['Hemoglobin_g_dL'].mean()
     mean_hb.plot(kind='bar', color=['#2E8B57', '#FFA07A'], edgecolor='black', ax=ax)
-    ax.set_ylabel("مستوى الهيموجلوبين (g/dL)")
+    ax.set_ylabel("Hemoglobin Level (g/dL)")
     st.pyplot(fig)
 
-# --- 6. رسم: الوزن والهيموجلوبين ---
-elif options == "6. رسم: علاقة الوزن بالهيموجلوبين":
-    st.header("العلاقة بين الوزن ومستوى الهيموجلوبين")
+# --- 6. Plot: Weight vs Hemoglobin ---
+elif options == "6. Plot: Weight vs. Hemoglobin":
+    st.header("Relationship: Weight vs. Hemoglobin")
     fig, ax = plt.subplots(figsize=(10, 6))
     sns.scatterplot(data=df_viz, x='Weight_kg', y='Hemoglobin_g_dL', hue='Gender', palette='Set1', ax=ax)
-    ax.set_title("توزيع الوزن مقابل الهيموجلوبين")
+    ax.set_title("Weight vs. Hemoglobin Distribution")
     st.pyplot(fig)
-    st.info("نلاحظ هنا هل هناك علاقة طردية بين وزن المتبرع وصحته (الهيموجلوبين).")
+    st.info("We observe here if there is a correlation between donor weight and health (hemoglobin).")
 
-# --- 7. رسم: المدن ---
-elif options == "7. رسم: أفضل المدن":
-    st.header("أكثر المدن مشاركة في التبرع")
+# --- 7. Plot: Top Cities ---
+elif options == "7. Plot: Top Cities":
+    st.header("Top Cities by Number of Donors")
     fig, ax = plt.subplots(figsize=(10, 5))
     top_cities = df_viz['City'].value_counts().head(5)
     top_cities.plot(kind='bar', color='#4C72B0', edgecolor='black', ax=ax)
-    ax.set_ylabel("عدد المتبرعين")
+    ax.set_ylabel("Number of Donors")
     st.pyplot(fig)
 
-# --- 8. رسم: العمر ---
-elif options == "8. رسم: توزيع الأعمار":
-    st.header("توزيع أعمار المتبرعين")
+# --- 8. Plot: Age Distribution ---
+elif options == "8. Plot: Age Distribution":
+    st.header("Age Distribution of Donors")
     fig, ax = plt.subplots(figsize=(8, 6))
     plt.hist(df_viz['Age'], bins=15, color='orange', edgecolor='black')
-    ax.set_xlabel("العمر")
-    ax.set_ylabel("التكرار")
+    ax.set_xlabel("Age")
+    ax.set_ylabel("Frequency")
     st.pyplot(fig)
 
-# --- 9. تدريب النموذج ---
-elif options == "9. تدريب النموذج (AI)":
-    st.header("🤖 تدريب نموذج الذكاء الاصطناعي")
+# --- 9. Model Training ---
+elif options == "9. Model Training (AI)":
+    st.header("🤖 Train Artificial Intelligence Model")
     
     df_ml = df_clean.copy()
     
-    # التجهيز (Encoding)
+    # Data Encoding
     label_cols = ['Gender', 'Blood_Group', 'Eligible_for_Donation']
     encoders = {}
     for col in label_cols:
@@ -175,10 +175,10 @@ elif options == "9. تدريب النموذج (AI)":
 
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-    model_choice = st.selectbox("اختر الخوارزمية:", 
+    model_choice = st.selectbox("Select Algorithm:", 
         ["Random Forest", "Decision Tree", "Logistic Regression", "KNN", "SVM"])
 
-    if st.button("ابدأ التدريب"):
+    if st.button("Start Training"):
         if model_choice == "Random Forest": model = RandomForestClassifier()
         elif model_choice == "Decision Tree": model = DecisionTreeClassifier()
         elif model_choice == "Logistic Regression": model = LogisticRegression()
@@ -189,20 +189,20 @@ elif options == "9. تدريب النموذج (AI)":
         acc = accuracy_score(y_test, model.predict(X_test))
         
         st.session_state['model'] = model
-        st.success(f"تم تدريب {model_choice} بدقة: {acc*100:.2f}%")
+        st.success(f"Model {model_choice} trained with Accuracy: {acc*100:.2f}%")
 
-        # رسم مصفوفة الارتباط هنا كجزء من تحليل النموذج
-        st.subheader("مصفوفة الارتباط (Correlation Matrix)")
+        # Correlation Matrix
+        st.subheader("Correlation Matrix")
         fig, ax = plt.subplots(figsize=(8, 6))
         sns.heatmap(df_ml.corr(numeric_only=True), annot=True, cmap='coolwarm', ax=ax)
         st.pyplot(fig)
 
-# --- 10. التوقع ---
-elif options == "10. فحص متبرع جديد":
-    st.header("فحص أهلية متبرع جديد")
+# --- 10. Prediction ---
+elif options == "10. Check New Donor Eligibility":
+    st.header("Check New Donor Eligibility")
 
     if 'model' not in st.session_state:
-        st.warning("يرجى تدريب النموذج أولاً من صفحة التدريب.")
+        st.warning("Please train the model first in the 'Model Training' page.")
         st.stop()
 
     model = st.session_state['model']
@@ -210,15 +210,15 @@ elif options == "10. فحص متبرع جديد":
 
     c1, c2 = st.columns(2)
     with c1:
-        age = st.number_input("العمر", 18, 65, 25)
-        gender = st.selectbox("الجنس", ["Male", "Female"])
-        weight = st.number_input("الوزن (kg)", 45.0, 150.0, 65.0)
+        age = st.number_input("Age", 18, 65, 25)
+        gender = st.selectbox("Gender", ["Male", "Female"])
+        weight = st.number_input("Weight (kg)", 45.0, 150.0, 65.0)
     with c2:
-        hb = st.number_input("الهيموجلوبين", 5.0, 20.0, 13.0)
-        donations = st.number_input("تبرعات سابقة", 0, 50, 0)
-        bg = st.selectbox("فصيلة الدم", ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"])
+        hb = st.number_input("Hemoglobin (g/dL)", 5.0, 20.0, 13.0)
+        donations = st.number_input("Previous Donations", 0, 50, 0)
+        bg = st.selectbox("Blood Group", ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"])
 
-    if st.button("هل هو مؤهل؟"):
+    if st.button("Check Eligibility"):
         try:
             g_enc = encoders['Gender'].transform([gender])[0]
             bg_enc = encoders['Blood_Group'].transform([bg])[0]
@@ -227,9 +227,10 @@ elif options == "10. فحص متبرع جديد":
             pred = model.predict(input_data)
             res = encoders['Eligible_for_Donation'].inverse_transform(pred)[0]
 
-            if res in ["Yes", 1, "Eligible"]:
-                st.success("✅ مؤهل للتبرع")
+            # Standardizing positive response check
+            if str(res).lower() in ["yes", "1", "eligible", "true"]:
+                st.success("✅ Eligible to Donate")
             else:
-                st.error("❌ غير مؤهل")
-        except:
-            st.error("حدث خطأ في البيانات المدخلة")
+                st.error("❌ Not Eligible to Donate")
+        except Exception as e:
+            st.error(f"Error in input data: {e}")
