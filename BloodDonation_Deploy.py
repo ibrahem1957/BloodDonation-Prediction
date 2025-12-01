@@ -46,13 +46,6 @@ if df is None:
 cols_to_drop = ['Full_Name', 'Contact_Number', 'Email', 'Country', 'Donor_ID']
 existing_drop = [c for c in cols_to_drop if c in df.columns]
 st.subheader("Data Shape")
-col1, col2 = st.columns(2)
-
-with col1:
-    st.metric("Total Rows", df.shape[0])
-
-with col2:
-    st.metric("Total Columns", df.shape[1])
 if existing_drop:
     df_clean = df.drop(columns=existing_drop)
 else:
@@ -99,11 +92,20 @@ selection = st.sidebar.radio("Go to:", pages)
 # =========================================================
 
 # --- Page 1: Overview ---
+st.subheader("Data Shape")
+col1, col2 = st.columns(2)
+
+with col1:
+    st.metric("Total Rows", df.shape[0])
+
+with col2:
+    st.metric("Total Columns", df.shape[1])
 if selection == "1. Project Overview & Data":
     st.header("📋 Data Overview & Cleaning")
     st.subheader("Cleaned Data Preview")
     st.dataframe(df_clean.head(10))
     st.write(f"**Total Rows:** {df_clean.shape[0]} | **Total Columns:** {df_clean.shape[1]}")
+    
 
 # --- Page 2: Blood Groups ---
 elif selection == "2. Blood Group Distribution":
