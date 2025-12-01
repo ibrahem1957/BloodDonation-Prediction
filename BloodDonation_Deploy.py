@@ -12,13 +12,13 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score
 
-# --- إعدادات الصفحة ---
-st.set_page_config(page_title="تحليل التبرع بالدم", layout="wide")
+# --- Page Configuration ---
+st.set_page_config(page_title="Blood Donation Analysis", layout="wide")
 
-# --- العنوان الرئيسي ---
-st.title("🩸 نظام تحليل وتوقع أهلية التبرع بالدم")
+# --- Main Title ---
+st.title("🩸 Blood Donation Eligibility Analysis & Prediction System")
 
-# --- دالة تحميل البيانات ---
+# --- Data Loading Function ---
 @st.cache_data
 def load_data():
     try:
@@ -27,22 +27,22 @@ def load_data():
     except FileNotFoundError:
         return None
 
-# تحميل البيانات
+# Load Data
 df = load_data()
 
 if df is None:
-    st.warning("لم يتم العثور على ملف 'blood_donation.csv'. يرجى رفع الملف أدناه.")
-    uploaded_file = st.file_uploader("رفع ملف CSV", type=["csv"])
+    st.warning("The file 'blood_donation.csv' was not found. Please upload it below.")
+    uploaded_file = st.file_uploader("Upload CSV File", type=["csv"])
     if uploaded_file is not None:
         df = pd.read_csv(uploaded_file)
     else:
         st.stop()
 
 # =========================================================
-# === تنظيف ومعالجة البيانات ===
+# === Data Cleaning & Processing ===
 # =========================================================
 
-# 1. حذف الأعمدة غير الضرورية
+# 1. Drop unnecessary columns
 cols_to_drop = ['Full_Name', 'Contact_Number', 'Email', 'Country', 'Donor_ID']
 existing_drop = [c for c in cols_to_drop if c in df.columns]
 if existing_drop:
@@ -50,186 +50,203 @@ if existing_drop:
 else:
     df_clean = df.copy()
 
-# 2. حذف 'Other' من الجنس
+# 2. Remove 'Other' from Gender
 if 'Gender' in df_clean.columns:
     df_clean = df_clean[df_clean['Gender'] != 'Other']
 
-# 3. معالجة التواريخ
+# 3. Date Processing
 if 'Last_Donation_Date' in df_clean.columns:
     df_clean['Last_Donation_Date'] = pd.to_datetime(df_clean['Last_Donation_Date'], format='%d-%m-%Y', errors='coerce')
     df_clean['Donation_Year'] = df_clean['Last_Donation_Date'].dt.year
 
-# حفظ البيانات في session state
+# Save to session state
 st.session_state['df_clean'] = df_clean
 df_viz = df_clean.copy()
 
 # ---------------------------------------------------------
-# --- القائمة الجانبية (التنقل) ---
+# --- Sidebar Navigation ---
 # ---------------------------------------------------------
-st.sidebar.title("لوحة التحكم")
+st.sidebar.title("Navigation")
 st.sidebar.markdown("---")
 
 pages = [
-    "1. نظرة عامة على البيانات",
-    "2. توزيع فصائل الدم",
-    "3. الديموغرافيا (الجنس)",
-    "4. اتجاهات التبرع السنوية",
-    "5. التبرعات حسب الجنس (سنوياً)",
-    "6. متوسط مستويات الهيموجلوبين",
-    "7. العلاقة بين الوزن والهيموجلوبين",
-    "8. التحليل الجغرافي (المدن)",
-    "9. توزيع الأعمار (Histogram)",
-    "10. العمر حسب فصيلة الدم (Boxplot)",
-    "11. تدريب نموذج التوقع",
-    "12. فحص أهلية متبرع جديد"
+    "1. Project Overview & Data",
+    "2. Blood Group Distribution",
+    "3. Gender Demographics",
+    "4. Yearly Donation Trends",
+    "5. Donations by Gender (Yearly)",
+    "6. Average Hemoglobin Levels",
+    "7. Weight vs. Hemoglobin",
+    "8. Geographic Analysis (Cities)",
+    "9. Age Distribution (Histogram)",
+    "10. Age by Blood Group (Boxplot)",
+    "11. Train Prediction Model",
+    "12. Predict Donor Eligibility"
 ]
 
-selection = st.sidebar.radio("انتقل إلى:", pages)
+selection = st.sidebar.radio("Go to:", pages)
 
 # =========================================================
-# === محتوى الصفحات ===
+# === Page Content ===
 # =========================================================
 
-# --- الصفحة 1: نظرة عامة ---
-if selection == "1. نظرة عامة على البيانات":
-    st.header("📋 نظرة عامة وتنظيف البيانات")
-    st.subheader("معاينة البيانات بعد التنظيف")
+# --- Page 1: Overview ---
+if selection == "1. Project Overview & Data":
+    st.header("📋 Data Overview & Cleaning")
+    st.subheader("Cleaned Data Preview")
     st.dataframe(df_clean.head(10))
-    st.write(f"**إجمالي الصفوف:** {df_clean.shape[0]} | **إجمالي الأعمدة:** {df_clean.shape[1]}")
-    st.info("تم تنظيف البيانات وحذف القيم غير المرغوبة (مثل الجنس 'Other') وتجهيز التواريخ للتحليل.")
+    st.write(f"**Total Rows:** {df_clean.shape[0]} | **Total Columns:** {df_clean.shape[1]}")
 
-# --- الصفحة 2: فصائل الدم ---
-elif selection == "2. توزيع فصائل الدم":
-    st.header("🩸 توزيع فصائل الدم")
-    # تم تصغير الحجم من (8, 6) إلى (6, 4)
+# --- Page 2: Blood Groups ---
+elif selection == "2. Blood Group Distribution":
+    st.header("🩸 Blood Group Distribution")
+    # Reduced size to (6, 4)
     fig, ax = plt.subplots(figsize=(6, 4))
     sns.countplot(data=df_viz, x='Blood_Group', palette='viridis', ax=ax)
-    ax.set_title("عدد المتبرعين لكل فصيلة دم")
+    ax.set_title("Count of Donors by Blood Group")
     st.pyplot(fig)
 
-    st.markdown("### 💡 رؤى حول توزيع فصائل الدم")
+    # --- Custom Note ---
+    st.markdown("### 🩸 Compatibility & Distribution Notes")
     st.markdown("""
-    **أسباب التوزيع الحالي لفصائل الدم:**
-    * **السبب الجيني:** تعتبر فصيلتا **O+** و **B+** الأكثر شيوعاً بين السكان، بينما **A+** أقل شيوعاً، وتعتبر **AB+** نادرة.
-    * **سبب التوافق:** يمكن لفصيلة **O+** التبرع لمعظم الفصائل الموجبة، مما يجعلها تظهر بشكل أكبر في سجلات التبرع. بالمقابل، **AB+** تستقبل من الجميع لكنها تتبرع فقط لـ AB، مما قد يفسر قلتها نسبياً في بعض السياقات.
+    | Blood Type | Can Donate To | Can Receive From |
+    | :--- | :--- | :--- |
+    | **O-** | All types | O- |
+    | **O+** | O+, A+, B+, AB+ | O-, O+ |
+    | **A-** | A-, A+, AB-, AB+ | A-, O- |
+    | **A+** | A+, AB+ | A+, A-, O+, O- |
+    | **B-** | B-, B+, AB-, AB+ | B-, O- |
+    | **B+** | B+, AB+ | B+, B-, O+, O- |
+    | **AB-** | AB-, AB+ | AB-, A-, B-, O- |
+    | **AB+** | AB+ | All types |
+
+    **Reasons for Blood Type Distribution in India:**
+    * **Genetic reason:** O+ and B+ are more common among the population, A+ is less common, and AB+ is rare.
+    * **Compatibility reason:** O+ can donate to most positive blood types → appears more in donations. AB+ can donate only to AB → appears less in donations.
     """)
 
-# --- الصفحة 3: الجنس ---
-elif selection == "3. الديموغرافيا (الجنس)":
-    st.header("⚤ توزيع الجنس")
+# --- Page 3: Gender ---
+elif selection == "3. Gender Demographics":
+    st.header("⚤ Gender Distribution")
     gender_counts = df_viz['Gender'].value_counts()
-    # تم تصغير الحجم من (6, 6) إلى (4, 4)
+    # Reduced size to (4, 4)
     fig, ax = plt.subplots(figsize=(4, 4))
     ax.pie(gender_counts, labels=gender_counts.index, autopct='%1.1f%%', colors=['skyblue', 'lightcoral'], startangle=90)
-    ax.set_title("نسبة الذكور مقابل الإناث")
+    ax.set_title("Male vs Female Donors")
     st.pyplot(fig)
 
-    st.info("💡 **ملاحظة:** يوضح الرسم التباين في أعداد المتبرعين. عادةً ما تكون نسبة الذكور أعلى في حملات التبرع لأسباب طبية أو اجتماعية.")
+    st.info("**Insight:** This chart displays the gender ratio of donors. A balanced ratio indicates good awareness.")
 
-# --- الصفحة 4: السنوات ---
-elif selection == "4. اتجاهات التبرع السنوية":
-    st.header("📅 التبرعات عبر السنوات")
+# --- Page 4: Years ---
+elif selection == "4. Yearly Donation Trends":
+    st.header("📅 Donations Over the Years")
     if 'Donation_Year' in df_viz.columns:
-        # تم تصغير الحجم من (10, 5) إلى (8, 4)
+        # Reduced size to (8, 4)
         fig, ax = plt.subplots(figsize=(8, 4))
         donation_per_year = df_viz.groupby('Donation_Year').size()
         donation_per_year.plot(kind='line', marker='o', color='green', ax=ax)
         plt.grid(True)
-        ax.set_ylabel("إجمالي التبرعات")
+        ax.set_ylabel("Total Donations")
         st.pyplot(fig)
-        
-        st.info("💡 **ملاحظة:** يساعد هذا الرسم في تتبع نمو الوعي بالتبرع بالدم. الاتجاه التصاعدي يشير إلى نجاح الحملات التوعوية.")
-    else:
-        st.error("بيانات السنوات غير متوفرة.")
 
-# --- الصفحة 5: التبرعات حسب الجنس والسنة ---
-elif selection == "5. التبرعات حسب الجنس (سنوياً)":
-    st.header("📊 التبرعات السنوية حسب الجنس")
+        st.info("**Insight:** The line graph tracks the growth in donation numbers over the years.")
+    else:
+        st.error("Year column not found.")
+
+# --- Page 5: Donations by Gender & Year ---
+elif selection == "5. Donations by Gender (Yearly)":
+    st.header("📊 Donations per Year by Gender")
     
     if 'Donation_Year' in df_viz.columns and 'Gender' in df_viz.columns:
         gender_year = df_viz.groupby("Donation_Year")['Gender'].value_counts().unstack(fill_value=0)
-        # تم تصغير الحجم من (8, 5) إلى (7, 4)
+        
+        # Reduced size to (7, 4)
         fig, ax = plt.subplots(figsize=(7, 4))
         gender_year.plot(kind='bar', ax=ax)
-        ax.set_title("التبرعات لكل سنة حسب الجنس")
-        ax.set_xlabel("السنة")
-        ax.set_ylabel("إجمالي التبرعات")
+        ax.set_title("Donations per Year by Gender (Stacked)")
+        ax.set_xlabel("Year")
+        ax.set_ylabel("Total Donations")
         plt.xticks(rotation=0)
         plt.grid(axis='y')
         st.pyplot(fig)
 
-        st.info("💡 **ملاحظة:** يتيح هذا الرسم مقارنة مساهمة كل جنس عبر الزمن. يمكن استخدامه لمعرفة ما إذا كانت الفجوة بين الجنسين تتقلص أم تزداد.")
+        st.info("**Insight:** This chart shows the contribution of each gender over time.")
     else:
-        st.error("الأعمدة المطلوبة مفقودة.")
+        st.error("Missing necessary columns.")
 
-# --- الصفحة 6: الهيموجلوبين ---
-elif selection == "6. متوسط مستويات الهيموجلوبين":
-    st.header("🧪 متوسط الهيموجلوبين حسب الجنس")
-    # تم تصغير الحجم من (8, 6) إلى (6, 4)
+# --- Page 6: Hemoglobin ---
+elif selection == "6. Average Hemoglobin Levels":
+    st.header("🧪 Average Hemoglobin by Gender")
+    # Reduced size to (6, 4)
     fig, ax = plt.subplots(figsize=(6, 4))
     mean_hb = df_viz.groupby('Gender')['Hemoglobin_g_dL'].mean()
     mean_hb.plot(kind='bar', color=['#2E8B57', '#FFA07A'], edgecolor='black', ax=ax)
-    ax.set_ylabel("الهيموجلوبين (g/dL)")
+    ax.set_ylabel("Hemoglobin (g/dL)")
     st.pyplot(fig)
 
-    st.info("""
-    💡 **معلومة طبية:** * المعدل الطبيعي للرجال: **13.8 - 17.2 g/dL**
-    * المعدل الطبيعي للنساء: **12.1 - 15.1 g/dL**
+    st.markdown("### 📋 Normal Hemoglobin Levels")
+    st.markdown("""
+    | Gender | Normal Hemoglobin (g/dL) |
+    | :--- | :--- |
+    | **Men** | 13.8 – 17.2 |
+    | **Women** | 12.1 – 15.1 |
     """)
 
-# --- الصفحة 7: الوزن مقابل الهيموجلوبين ---
-elif selection == "7. العلاقة بين الوزن والهيموجلوبين":
-    st.header("⚖️ الوزن مقابل الهيموجلوبين")
-    # تم تصغير الحجم من (10, 6) إلى (8, 5)
+# --- Page 7: Weight vs Hemoglobin ---
+elif selection == "7. Weight vs. Hemoglobin":
+    st.header("⚖️ Weight vs. Hemoglobin")
+    # Reduced size to (8, 5)
     fig, ax = plt.subplots(figsize=(8, 5))
     sns.scatterplot(data=df_viz, x='Weight_kg', y='Hemoglobin_g_dL', hue='Gender', palette='Set1', ax=ax)
     st.pyplot(fig)
 
-    st.info("💡 **ملاحظة:** الوزن ومستوى الهيموجلوبين هما من أهم معايير قبول المتبرع. يوضح الرسم توزع المتبرعين، حيث يُرفض عادةً من هم أقل من 50 كجم.")
+    st.info("**Insight:** This scatter plot shows the correlation between weight and hemoglobin levels.")
 
-# --- الصفحة 8: المدن ---
-elif selection == "8. التحليل الجغرافي (المدن)":
-    st.header("🏙️ أكثر المدن نشاطاً في التبرع")
-    # تم تصغير الحجم من (10, 5) إلى (8, 4)
+# --- Page 8: Cities ---
+elif selection == "8. Geographic Analysis (Cities)":
+    st.header("🏙️ Top Cities by Donation Count")
+    # Reduced size to (8, 4)
     fig, ax = plt.subplots(figsize=(8, 4))
     top_cities = df_viz['City'].value_counts().head(5)
     top_cities.plot(kind='bar', color='#4C72B0', edgecolor='black', ax=ax)
     plt.xticks(rotation=45)
     st.pyplot(fig)
 
-    st.info("💡 **فائدة:** معرفة المدن الأكثر نشاطاً تساعد بنوك الدم في تحسين لوجستيات النقل وتوجيه حملات التبرع.")
+    st.info("**Insight:** Identifying top-performing cities helps in logistics planning.")
 
-# --- الصفحة 9: توزيع الأعمار ---
-elif selection == "9. توزيع الأعمار (Histogram)":
-    st.header("🎂 التوزيع العمري للمتبرعين")
-    # تم تصغير الحجم من (8, 5) إلى (7, 4)
+# --- Page 9: Age Distribution ---
+elif selection == "9. Age Distribution (Histogram)":
+    st.header("🎂 Distribution of Donors Age")
+    
+    # Reduced size to (7, 4)
     fig, ax = plt.subplots(figsize=(7, 4))
     ax.hist(df_viz['Age'], bins=10, color='skyblue', edgecolor='black')
-    ax.set_title('توزيع أعمار المتبرعين')
-    ax.set_xlabel('العمر')
-    ax.set_ylabel('عدد المتبرعين')
+    ax.set_title('Distribution of Donors Age')
+    ax.set_xlabel('Age')
+    ax.set_ylabel('Number of Donors')
     st.pyplot(fig)
 
-    st.info("💡 **ملاحظة:** يوضح الرسم الفئات العمرية الغالبة. غالباً ما تكون الفئة الشبابية (20-40) هي الأكثر نشاطاً.")
+    st.info("**Insight:** Shows the age demographics of the donors.")
 
-# --- الصفحة 10: العمر حسب فصيلة الدم ---
-elif selection == "10. العمر حسب فصيلة الدم (Boxplot)":
-    st.header("🩸 توزيع العمر حسب فصيلة الدم")
-    # تم تصغير الحجم من (10, 6) إلى (8, 5)
+# --- Page 10: Age by Blood Group ---
+elif selection == "10. Age by Blood Group (Boxplot)":
+    st.header("🩸 Age Distribution by Blood Group")
+    
+    # Reduced size to (8, 5)
     fig, ax = plt.subplots(figsize=(8, 5))
     sns.boxplot(data=df_viz, x='Blood_Group', y='Age', palette='Set2', ax=ax)
-    ax.set_title('توزيع العمر لكل فصيلة دم')
+    ax.set_title('Age Distribution by Blood Group')
     st.pyplot(fig)
 
-    st.info("💡 **ملاحظة:** يبين هذا الرسم المتوسط والمدى العمري لكل فصيلة. يساعد في التأكد من أن جميع الفصائل ممثلة بشكل متوازن.")
+    st.info("**Insight:** This boxplot analyzes the age spread across different blood groups.")
 
-# --- الصفحة 11: تدريب النموذج ---
-elif selection == "11. تدريب نموذج التوقع":
-    st.header("🤖 تدريب نموذج التعلم الآلي")
+# --- Page 11: Model Training ---
+elif selection == "11. Train Prediction Model":
+    st.header("🤖 Train Machine Learning Model")
     
     df_ml = df_clean.copy()
     
-    # ترميز البيانات
+    # Encoding
     label_cols = ['Gender', 'Blood_Group', 'Eligible_for_Donation']
     encoders = {}
     for col in label_cols:
@@ -244,10 +261,10 @@ elif selection == "11. تدريب نموذج التوقع":
 
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-    model_choice = st.selectbox("اختر الخوارزمية:", 
+    model_choice = st.selectbox("Select Algorithm:", 
         ["Random Forest", "Decision Tree", "Logistic Regression", "KNN", "SVM"])
 
-    if st.button("بدء التدريب 🚀"):
+    if st.button("Start Training 🚀"):
         if model_choice == "Random Forest": model = RandomForestClassifier()
         elif model_choice == "Decision Tree": model = DecisionTreeClassifier()
         elif model_choice == "Logistic Regression": model = LogisticRegression()
@@ -257,20 +274,20 @@ elif selection == "11. تدريب نموذج التوقع":
         model.fit(X_train, y_train)
         acc = accuracy_score(y_test, model.predict(X_test))
         st.session_state['model'] = model
-        st.success(f"✅ تم تدريب نموذج **{model_choice}** بنجاح! الدقة: {acc*100:.2f}%")
+        st.success(f"✅ Model **{model_choice}** trained! Accuracy: {acc*100:.2f}%")
 
-        st.subheader("مصفوفة الارتباط (Correlation Matrix)")
-        # تصغير حجم مصفوفة الارتباط
+        st.subheader("Correlation Matrix")
+        # Reduced size to (6, 5)
         fig, ax = plt.subplots(figsize=(6, 5))
         sns.heatmap(df_ml.corr(numeric_only=True), annot=True, cmap='coolwarm', fmt=".2f", ax=ax)
         st.pyplot(fig)
 
-# --- الصفحة 12: التوقع ---
-elif selection == "12. فحص أهلية متبرع جديد":
-    st.header("🩺 فحص الأهلية (توقع)")
+# --- Page 12: Prediction ---
+elif selection == "12. Predict Donor Eligibility":
+    st.header("🩺 Predict Eligibility")
 
     if 'model' not in st.session_state:
-        st.warning("⚠️ يرجى تدريب النموذج أولاً من صفحة 'تدريب نموذج التوقع'.")
+        st.warning("⚠️ Please train the model first in the 'Train Prediction Model' page.")
         st.stop()
 
     model = st.session_state['model']
@@ -278,15 +295,15 @@ elif selection == "12. فحص أهلية متبرع جديد":
 
     c1, c2 = st.columns(2)
     with c1:
-        age = st.number_input("العمر", 18, 65, 25)
-        gender = st.selectbox("الجنس", ["Male", "Female"])
-        weight = st.number_input("الوزن (kg)", 45.0, 150.0, 65.0)
+        age = st.number_input("Age", 18, 65, 25)
+        gender = st.selectbox("Gender", ["Male", "Female"])
+        weight = st.number_input("Weight (kg)", 45.0, 150.0, 65.0)
     with c2:
-        hb = st.number_input("الهيموجلوبين (g/dL)", 5.0, 20.0, 13.0)
-        donations = st.number_input("عدد التبرعات السابقة", 0, 50, 0)
-        bg = st.selectbox("فصيلة الدم", ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"])
+        hb = st.number_input("Hemoglobin (g/dL)", 5.0, 20.0, 13.0)
+        donations = st.number_input("Donations Count", 0, 50, 0)
+        bg = st.selectbox("Blood Group", ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"])
 
-    if st.button("فحص الأهلية"):
+    if st.button("Check"):
         try:
             g_enc = encoders['Gender'].transform([gender])[0]
             bg_enc = encoders['Blood_Group'].transform([bg])[0]
@@ -294,13 +311,9 @@ elif selection == "12. فحص أهلية متبرع جديد":
             pred = model.predict(input_data)
             res = encoders['Eligible_for_Donation'].inverse_transform(pred)[0]
 
-            st.markdown("---")
             if str(res).lower() in ["yes", "1", "eligible", "true"]:
-                st.success("✅ **مؤهل للتبرع:** هذا الشخص يستوفي الشروط.")
-                st.balloons()
+                st.success("✅ Eligible")
             else:
-                st.error("❌ **غير مؤهل للتبرع:** نأسف، هذا الشخص لا يمكنه التبرع حالياً.")
-                if hb < 12.5: st.warning("⚠️ السبب المحتمل: مستوى الهيموجلوبين منخفض.")
-                if weight < 50: st.warning("⚠️ السبب المحتمل: الوزن أقل من الحد المسموح.")
+                st.error("❌ Not Eligible")
         except:
-            st.error("حدث خطأ في التوقع، تأكد من البيانات.")
+            st.error("Error in prediction.")
