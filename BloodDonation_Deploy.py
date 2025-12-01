@@ -45,6 +45,14 @@ if df is None:
 # 1. Drop unnecessary columns
 cols_to_drop = ['Full_Name', 'Contact_Number', 'Email', 'Country', 'Donor_ID']
 existing_drop = [c for c in cols_to_drop if c in df.columns]
+st.subheader("Data Shape")
+col1, col2 = st.columns(2)
+
+with col1:
+    st.metric("Total Rows", df.shape[0])
+
+with col2:
+    st.metric("Total Columns", df.shape[1])
 if existing_drop:
     df_clean = df.drop(columns=existing_drop)
 else:
